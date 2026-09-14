@@ -1,0 +1,160 @@
+================================================================================
+                    CODEQUIZ ARENA - ALL WEBSITE FEATURES
+================================================================================
+
+Website Name: CodeQuiz Arena (Developer Learning & Competitive Coding Platform)
+Technology Stack: Next.js 16 (Turbopack), React 19, TypeScript, Tailwind CSS, 
+                  Prisma ORM (SQLite), Supabase (Auth & Real-time WebSockets), 
+                  Web Audio API.
+
+--------------------------------------------------------------------------------
+1. MAIN NAVIGATION & USER INTERFACE
+--------------------------------------------------------------------------------
+* Ultra-Fast Loading: Optimized local server running without IP lag or loading freezes.
+* Modern Dark Glassmorphic Design: Sleek developer aesthetic with glowing neon accents, 
+  responsive layout, and high-performance transitions.
+* Clean 4-Item Main Navbar:
+    1. Home (/)
+    2. Courses (/courses)
+    3. Challenge 1v1 (/challenge-vs)
+    4. Leaderboard (/leaderboard)
+* Profile Dropdown Menu (Top Right):
+    - Profile (/profile) - Direct access to user analytics & match history.
+    - Settings (/settings) - Full application preferences and audio controls.
+    - Sign Out / Login - Quick authentication switcher.
+* Complete Dashboard Removal:
+    - Redundant dashboard replaced with an all-in-one comprehensive Profile system.
+    - Any access to /dashboard automatically redirects to /profile.
+
+--------------------------------------------------------------------------------
+2. FULL-WINDOW IMMERSIVE QUIZ EXPERIENCE
+--------------------------------------------------------------------------------
+* Distraction-Free Fullscreen Game Mode:
+    - Navbar (Header) and Footer automatically disappear completely when starting any 
+      quiz or duel (/quiz/*, /room/*, /challenge-vs/*).
+    - 100% of the screen is dedicated to the quiz gameplay.
+* In-Game Glass HUD:
+    - Live Question Progress Indicator (e.g., Question 3 of 10).
+    - Real-Time Countdown Timer with visual progress bar.
+    - Active Combo & Streak Counter with multiplier animations.
+    - Exit Confirmation Button to return smoothly to course selection or lobby.
+    - Header & Footer are instantly restored upon returning to browsing pages.
+
+--------------------------------------------------------------------------------
+3. SOLO PRACTICE & QUIZ ENGINE
+--------------------------------------------------------------------------------
+* Supported Programming Languages & Tracks:
+    - HTML5 & Modern Web Standards
+    - Modern CSS3 (Flexbox, Grid, Animations, Tailwind)
+    - JavaScript (ES6+, Async, Closures, DOM, Prototypes)
+    - React 19 & Next.js (Hooks, Server Components, State Management)
+    - Python 3 (OOP, Data Structures, Decorators, Generators)
+    - TypeScript, Node.js, SQL, and Git.
+* Customizable Quiz Setup:
+    - Choose Question Count (5, 10, 15, 20+ questions).
+    - Choose Difficulty Tier (Beginner, Intermediate, Advanced, Expert).
+    - Timed Mode vs Untimed Practice Mode.
+* Interactive Code Snippets:
+    - Syntax-highlighted code blocks embedded directly inside questions.
+    - Immediate visual feedback on answer selection (Green for correct, Red for incorrect).
+    - Detailed question explanations showing why an answer is right or wrong.
+* Quiz Result & Review Screen:
+    - Final Score Percentage and Accuracy fraction (e.g., 9/10 - 90%).
+    - Performance summary: Total Time, Average Speed per Question, XP Earned.
+    - Question-by-Question Review with correct answers and explanations.
+    - Retry Quiz or Explore New Track buttons.
+
+--------------------------------------------------------------------------------
+4. 1v1 REAL-TIME DUEL ARENA (CHALLENGE VS)
+--------------------------------------------------------------------------------
+* Real-Time PvP Battles (/challenge-vs):
+    - Duel friends or random developers in real-time.
+    - Live Suggested & Online Friends list.
+    - Send instant challenge invitations specifying:
+        * Track / Course (e.g. JavaScript, React, Python)
+        * Number of questions
+        * Time limit per question
+* Instant Challenge Notifications:
+    - Popup alerts appear instantly when another player challenges you.
+    - Real-time Accept or Decline options with sound chime.
+* Live Battle Arena (/challenge-vs/[id]):
+    - Both players answer identical questions simultaneously.
+    - Live score comparison HUD showing your score vs opponent score in real-time.
+    - Victory / Defeat / Draw detection with ELO ranking adjustments.
+    - Match recap and rematch requests.
+
+--------------------------------------------------------------------------------
+5. MULTIPLAYER TOURNAMENT ROOMS
+--------------------------------------------------------------------------------
+* Multiplayer Lobby System (/room):
+    - Host custom quiz rooms with an 8-character Room Code (e.g., QZ-849201).
+    - 1-Click "Copy Code" button to share with friends, students, or colleagues.
+    - Live waiting room with player list, ready indicators, and host controls.
+* Host Game Controls:
+    - Select topic and question settings.
+    - Start game for all joined participants at the same moment.
+* Synchronized Live Competition:
+    - Simultaneous question broadcast via WebSockets.
+    - Live Podium & Tournament Leaderboard ranking 1st, 2nd, and 3rd place winners.
+
+--------------------------------------------------------------------------------
+6. LEADERBOARDS & RANKING SYSTEM
+--------------------------------------------------------------------------------
+* Global Rankings (/leaderboard):
+    - Top Developers Worldwide categorized by Total XP, Accuracy, and Win Rate.
+    - Filter rankings by Timeframe: All-Time, Weekly, and Daily.
+    - Filter rankings by Language Track (JavaScript, Python, CSS, etc.).
+* Developer Tiers & Badges:
+    - Rank Progression: Novice -> Apprentice -> Specialist -> Master -> Grandmaster -> Legend.
+    - ELO Rating system for 1v1 matches.
+
+--------------------------------------------------------------------------------
+7. USER PROFILE & DEEP ANALYTICS (/profile)
+--------------------------------------------------------------------------------
+* User Profile Card:
+    - Avatar, Display Name, Username, Developer Bio, and Member Since date.
+    - Level, Current Tier, and Total XP progress bar.
+* Core Performance Metrics:
+    - Total Quizzes Taken
+    - Average Accuracy Rate (%)
+    - Current & Highest Streak
+    - 1v1 Win / Loss / Draw Record
+    - Total Practice Time Logged
+* Track Mastery Breakdown:
+    - Accuracy percentage and question volume across individual languages.
+* Comprehensive Match History Tabs:
+    - Filter by: All Activity, Solo Practice, 1v1 Duels, Tournaments.
+    - Live search bar by track, quiz title, or opponent name.
+    - Direct links to review individual past quiz submissions and duels.
+* Hosted Rooms History:
+    - Quick access to all active and past multiplayer rooms hosted by the user.
+
+--------------------------------------------------------------------------------
+8. APPLICATION SETTINGS & PREFERENCES (/settings)
+--------------------------------------------------------------------------------
+* Audio & Ambience System:
+    - Master Audio Toggle: Global mute/unmute.
+    - Quiz Background Music (BGM): Toggle energetic background music on/off.
+    - Sound Effects (SFX): Toggle synthesized sound effects for clicks, correct 
+      answers, wrong answers, and victory.
+    - Real-Time Sound Test Button ("♪ Test Chime") to verify audio instantly.
+    - Master Volume Slider (10% to 100%).
+* Gameplay Preferences:
+    - Auto-Advance Questions: Automatically move to next question after selecting.
+    - Show Instant Explanation: Learn immediately after answering each question.
+    - Visual Timer Bar: Enable/disable countdown progress bar.
+    - Hardcore Sudden Death Mode: 1 wrong answer ends the quiz immediately.
+* Notification Controls:
+    - Toggle live 1v1 Duel invitation popups on or off.
+* Account & Profile Management:
+    - Update Display Name, Bio, Avatar, and GitHub / Portfolio links.
+
+--------------------------------------------------------------------------------
+9. SECURITY & DATA PERSISTENCE
+--------------------------------------------------------------------------------
+* Supabase Authentication with secure session cookies and token refresh.
+* Password encryption and secure profile management.
+* Prisma ORM with SQLite for fast, lightweight local storage and zero configuration.
+* Protected API routes and Server Actions with input validation and rate limiting.
+* Secret keys sanitized to adhere to GitHub Push Protection & security audits.
+================================================================================
