@@ -9,6 +9,8 @@ export const metadata: Metadata = {
   description: 'Browse all available technology tracks. Start a quiz in HTML, CSS, JavaScript, React, TypeScript, Python, SQL, or Git.',
 };
 
+export const dynamic = 'force-dynamic';
+
 export default async function CoursesPage() {
   const courses = await getCourses();
 

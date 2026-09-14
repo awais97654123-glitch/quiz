@@ -18,6 +18,7 @@ import {
   LogOut,
   ArrowRight,
   ShieldCheck,
+  X,
 } from 'lucide-react';
 import type { User as SupabaseUser } from '@supabase/supabase-js';
 import { createClient } from '@/lib/supabase/client';

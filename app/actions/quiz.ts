@@ -55,26 +55,31 @@ export interface QuizResultReview {
 // ============================================================
 
 export async function getCourses() {
-  const courses = await prisma.course.findMany({
-    include: {
-      _count: {
-        select: { questions: true },
+  try {
+    const courses = await prisma.course.findMany({
+      include: {
+        _count: {
+          select: { questions: true },
+        },
       },
-    },
-    orderBy: { name: 'asc' },
-  });
+      orderBy: { name: 'asc' },
+    });
 
-  return courses.map((c) => ({
-    id: c.id,
-    name: c.name,
-    slug: c.slug,
-    description: c.description,
-    icon: c.icon,
-    color: c.color,
-    badge: c.badge,
-    topics: c.topics ? (JSON.parse(c.topics) as string[]) : [],
-    questionCount: c._count.questions,
-  }));
+    return courses.map((c) => ({
+      id: c.id,
+      name: c.name,
+      slug: c.slug,
+      description: c.description,
+      icon: c.icon,
+      color: c.color,
+      badge: c.badge,
+      topics: c.topics ? (JSON.parse(c.topics) as string[]) : [],
+      questionCount: c._count.questions,
+    }));
+  } catch (error) {
+    console.error('Error fetching courses from database:', error);
+    return [];
+  }
 }
 
 // Aliases for backward compatibility
