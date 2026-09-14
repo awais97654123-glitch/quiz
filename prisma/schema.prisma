@@ -1,0 +1,183 @@
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "sqlite"
+  url      = env("DATABASE_URL")
+}
+
+model User {
+  id              String   @id @default(cuid())
+  clerkUserId     String   @unique
+  email           String?
+  name            String?
+  username        String?  @unique
+  institutionType String?  // SCHOOL, COLLEGE, UNIVERSITY
+  institutionName String?
+  codingLevel     String?  // BEGINNER, INTERMEDIATE, EXPERT
+  avatar          String?
+  totalScore      Int      @default(0)
+  ratingPoints    Int      @default(1000)
+  quizzesPlayed   Int      @default(0)
+  quizzesWon      Int      @default(0)
+  averageAccuracy Float    @default(0)
+  averageTimeSec  Int      @default(0)
+  lastActiveAt    DateTime?
+  createdAt       DateTime @default(now())
+  updatedAt       DateTime @default(now()) @updatedAt
+}
+
+model Course {
+  id           String            @id @default(cuid())
+  name         String
+  slug         String            @unique
+  description  String
+  icon         String            @default("Code")
+  color        String            @default("from-cyan-500 to-blue-600")
+  badge        String?           @default("Core")
+  topics       String?           // JSON array of covered topics
+  questions    Question[]
+  quizRooms    QuizRoom[]
+  soloAttempts SoloQuizAttempt[]
+  challenges   FriendChallenge[]
+  createdAt    DateTime          @default(now())
+}
+
+model Question {
+  id            String       @id @default(cuid())
+  courseId      String
+  course        Course       @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  topic         String?
+  question      String
+  options       String       // JSON array string: ["Option A", "Option B", "Option C", "Option D"]
+  correctAnswer Int          // Index: 0, 1, 2, 3
+  explanation   String
+  difficulty    String       @default("MEDIUM") // EASY, MEDIUM, HARD
+  codeSnippet   String?
+  answers       QuizAnswer[]
+  createdAt     DateTime     @default(now())
+}
+
+model QuizRoom {
+  id             String            @id @default(cuid())
+  roomCode       String            @unique // Exactly 8-digit numeric room code, e.g. "48291736"
+  creatorClerkId String
+  creatorName    String
+  courseId       String
+  course         Course            @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  quizName       String
+  description    String?
+  questionCount  Int               @default(10) // 10, 15, 20, 25, 30, 50
+  timeLimit      Int               @default(10) // In minutes
+  difficulty     String?           @default("ALL")
+  instructions   String?
+  questionIds    String?           // JSON array of selected Question IDs
+  status         String            @default("WAITING") // WAITING, IN_PROGRESS, COMPLETED
+  startedAt      DateTime?
+  endedAt        DateTime?
+  createdAt      DateTime          @default(now())
+  participants   QuizParticipant[]
+  activities     QuizActivity[]
+
+  @@index([roomCode])
+  @@index([status])
+}
+
+model QuizParticipant {
+  id                String       @id @default(cuid())
+  roomId            String
+  room              QuizRoom     @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId            String       // User ID
+  userName          String
+  userAvatar        String?
+  status            String       @default("WAITING") // WAITING, PLAYING, SUBMITTED
+  score             Int          @default(0) // Percentage 0 - 100
+  correctAnswers    Int          @default(0)
+  incorrectAnswers  Int          @default(0)
+  completionTimeSec Int          @default(0)
+  joinedAt          DateTime     @default(now())
+  submittedAt       DateTime?
+  answers           QuizAnswer[]
+
+  @@unique([roomId, userId])
+  @@index([roomId])
+}
+
+model QuizAnswer {
+  id             String          @id @default(cuid())
+  participantId  String
+  participant    QuizParticipant @relation(fields: [participantId], references: [id], onDelete: Cascade)
+  questionId     String
+  question       Question        @relation(fields: [questionId], references: [id], onDelete: Cascade)
+  selectedAnswer Int             // 0, 1, 2, 3
+  isCorrect      Boolean
+  answeredAt     DateTime        @default(now())
+}
+
+model QuizActivity {
+  id        String   @id @default(cuid())
+  roomId    String
+  room      QuizRoom @relation(fields: [roomId], references: [id], onDelete: Cascade)
+  userId    String   // Clerk user ID
+  userName  String
+  eventType String   // JOINED, TAB_HIDDEN, TAB_RETURNED, WINDOW_BLUR, WINDOW_FOCUS, SUBMITTED
+  metadata  String?  // Optional extra details
+  createdAt DateTime @default(now())
+}
+
+model SoloQuizAttempt {
+  id             String   @id @default(cuid())
+  clerkUserId    String?
+  userName       String
+  courseId       String
+  course         Course   @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  quizName       String
+  score          Int      // Percentage 0 - 100
+  totalQuestions Int
+  correctCount   Int
+  incorrectCount Int
+  timeTakenSec   Int
+  answers        String   // JSON string of full questions + selected options + explanations
+  completedAt    DateTime @default(now())
+}
+
+model FriendChallenge {
+  id                     String    @id @default(cuid())
+  courseId               String
+  course                 Course    @relation(fields: [courseId], references: [id], onDelete: Cascade)
+  challengerId           String    // Supabase user ID of challenger
+  challengerName         String
+  challengerUsername     String?
+  challengerAvatar       String?
+  opponentId             String    // Supabase user ID of challenged friend
+  opponentName           String
+  opponentUsername       String?
+  opponentAvatar         String?
+  status                 String    @default("PENDING") // PENDING, ACCEPTED, REJECTED, PLAYING, COMPLETED, CANCELLED
+  totalQuestions         Int       @default(10)
+  timeLimitSec           Int       @default(300)
+
+  // Challenger Battle Results
+  challengerScore        Int?
+  challengerCorrectCount Int?
+  challengerTimeSec      Int?
+  challengerCompletedAt  DateTime?
+  challengerQuestionIds  String?   // JSON string array of questions given to challenger
+
+  // Opponent Battle Results
+  opponentScore          Int?
+  opponentCorrectCount   Int?
+  opponentTimeSec        Int?
+  opponentCompletedAt    DateTime?
+  opponentQuestionIds    String?   // JSON string array of questions given to opponent
+
+  winnerId               String?   // userId of winner, or "DRAW"
+  createdAt              DateTime  @default(now())
+  updatedAt              DateTime  @updatedAt
+
+  @@index([challengerId])
+  @@index([opponentId])
+  @@index([status])
+}
+

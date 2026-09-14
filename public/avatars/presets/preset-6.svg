@@ -1,0 +1,20 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg6" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#fa709a" />
+      <stop offset="100%" stop-color="#fee140" />
+    </linearGradient>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg6)" />
+  <circle cx="50" cy="50" r="44" fill="#1c0e18" />
+  <!-- Quantum Architect -->
+  <circle cx="50" cy="42" r="16" fill="#2d1226" stroke="#fa709a" stroke-width="2" />
+  <!-- Neon Sunglasses -->
+  <path d="M 38 40 L 48 40 L 46 47 L 40 47 Z" fill="#fee140" />
+  <path d="M 52 40 L 62 40 L 60 47 L 54 47 Z" fill="#fee140" />
+  <line x1="48" y1="42" x2="52" y2="42" stroke="#fee140" stroke-width="1.5" />
+  <!-- Orbiting atomic electron ring -->
+  <ellipse cx="50" cy="50" rx="36" ry="14" fill="none" stroke="#fa709a" stroke-width="1.5" stroke-dasharray="3 3" transform="rotate(-25 50 50)" />
+  <!-- Body -->
+  <path d="M 28 86 C 30 68, 70 68, 72 86 Z" fill="#2d1226" stroke="#fee140" stroke-width="1.5" />
+</svg>

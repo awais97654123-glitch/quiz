@@ -1,0 +1,27 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 100 100" width="100" height="100">
+  <defs>
+    <linearGradient id="bg1" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#06b6d4" />
+      <stop offset="100%" stop-color="#3b82f6" />
+    </linearGradient>
+    <filter id="glow1">
+      <feGaussianBlur stdDeviation="2" result="coloredBlur"/>
+      <feMerge>
+        <feMergeNode in="coloredBlur"/>
+        <feMergeNode in="SourceGraphic"/>
+      </feMerge>
+    </filter>
+  </defs>
+  <rect width="100" height="100" rx="50" fill="url(#bg1)" />
+  <circle cx="50" cy="50" r="44" fill="#0f172a" />
+  <!-- Cyberpunk Visor Dev -->
+  <circle cx="50" cy="40" r="18" fill="#1e293b" stroke="#00f0ff" stroke-width="2" />
+  <rect x="36" y="36" width="28" height="8" rx="4" fill="#00f0ff" filter="url(#glow1)" />
+  <!-- Headset -->
+  <path d="M 30 40 A 20 20 0 0 1 70 40" fill="none" stroke="#38bdf8" stroke-width="3" stroke-linecap="round" />
+  <rect x="28" y="36" width="4" height="10" rx="2" fill="#0284c7" />
+  <rect x="68" y="36" width="4" height="10" rx="2" fill="#0284c7" />
+  <!-- Body / Hoodie -->
+  <path d="M 26 86 C 28 66, 72 66, 74 86 Z" fill="#0284c7" />
+  <path d="M 38 72 L 50 82 L 62 72" fill="none" stroke="#00f0ff" stroke-width="2" />
+</svg>
