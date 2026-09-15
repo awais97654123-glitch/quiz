@@ -276,7 +276,7 @@ export async function recalculateUserStats(clerkUserId: string) {
     let totalQuestions = 0;
     let totalCorrect = 0;
     let totalDurationSec = 0;
-    let totalMatches = soloAttempts.length + roomParticipations.length + duels.length;
+    const totalMatches = soloAttempts.length + roomParticipations.length + duels.length;
     let quizzesWon = 0;
     let latestActivity: Date | null = null;
 

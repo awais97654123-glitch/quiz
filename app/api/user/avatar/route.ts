@@ -69,22 +69,34 @@ export async function POST(request: NextRequest) {
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
 
-        const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-        const fileName = `avatar-${user.id}-${Date.now()}.${ext}`;
-        const filePath = path.join(uploadsDir, fileName);
+        const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
-        // Clean up previous uploads for this user
-        try {
-          const existingFiles = await readdir(uploadsDir);
-          for (const f of existingFiles) {
-            if (f.startsWith(`avatar-${user.id}-`)) {
-              await unlink(path.join(uploadsDir, f)).catch(() => {});
-            }
+        if (isServerless) {
+          // On Vercel / serverless runtime filesystem is read-only; store as Base64 Data URL
+          finalAvatarUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
+        } else {
+          try {
+            const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
+            const fileName = `avatar-${user.id}-${Date.now()}.${ext}`;
+            const filePath = path.join(uploadsDir, fileName);
+
+            // Clean up previous uploads for this user
+            try {
+              const existingFiles = await readdir(uploadsDir);
+              for (const f of existingFiles) {
+                if (f.startsWith(`avatar-${user.id}-`)) {
+                  await unlink(path.join(uploadsDir, f)).catch(() => {});
+                }
+              }
+            } catch {}
+
+            await writeFile(filePath, buffer);
+            finalAvatarUrl = `/uploads/avatars/${fileName}`;
+          } catch (writeErr) {
+            console.warn('Filesystem write failed, falling back to data URL:', writeErr);
+            finalAvatarUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
           }
-        } catch {}
-
-        await writeFile(filePath, buffer);
-        finalAvatarUrl = `/uploads/avatars/${fileName}`;
+        }
       } else if (preset && preset.trim()) {
         finalAvatarUrl = preset.trim();
       } else if (imageUrl && imageUrl.trim()) {
