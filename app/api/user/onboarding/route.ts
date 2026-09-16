@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
 import { getAuthUser } from '@/app/actions/auth';
 import { setSessionCookie } from '@/lib/auth/session';
+import { ensureDatabaseSchema } from '@/lib/db-init';
 
 const VALID_INSTITUTION_TYPES = new Set(['SCHOOL', 'COLLEGE', 'UNIVERSITY']);
 const VALID_CODING_LEVELS = new Set(['BEGINNER', 'INTERMEDIATE', 'EXPERT']);
@@ -9,6 +10,7 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 
 export async function POST(request: NextRequest) {
   try {
+    await ensureDatabaseSchema().catch(() => {});
     const authUser = await getAuthUser();
 
     if (!authUser || !authUser.userId) {

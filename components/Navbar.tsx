@@ -109,11 +109,8 @@ export function Navbar() {
     setAvatarError(false);
   }, [avatarUrl]);
 
-  // Hide Navbar completely on all quiz modes, countdowns, rooms, and active battle arenas
-  const isQuizMode =
-    pathname.startsWith('/quiz') ||
-    pathname.startsWith('/room') ||
-    (pathname.startsWith('/challenge-vs/') && pathname !== '/challenge-vs');
+  // Hide Navbar only during active fullscreen timed quiz session
+  const isQuizMode = pathname.startsWith('/quiz/play');
 
   if (isQuizMode) {
     return null;

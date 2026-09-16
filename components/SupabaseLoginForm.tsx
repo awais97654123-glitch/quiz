@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useRef } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import {
@@ -13,10 +13,11 @@ import {
   EyeOff,
   ShieldCheck,
   RotateCcw,
-  ArrowLeft,
+  KeyRound,
   CheckCircle2,
+  Sparkles,
 } from 'lucide-react';
-import { initiateSignIn, verifySignInOtp, resendVerificationOtp } from '@/app/actions/auth';
+import { loginWithPassword, initiateSignIn, verifySignInOtp, resendVerificationOtp } from '@/app/actions/auth';
 
 interface Props {
   redirectUrl?: string;
@@ -25,22 +26,26 @@ interface Props {
 export function SupabaseLoginForm({ redirectUrl }: Props) {
   const router = useRouter();
 
-  // Step 1: credentials, Step 2: otp
-  const [step, setStep] = useState<'credentials' | 'otp'>('credentials');
+  // Mode: 'password' (instant) or 'otp' (email code)
+  const [authMode, setAuthMode] = useState<'password' | 'otp'>('password');
+  const [otpStep, setOtpStep] = useState<'request' | 'verify'>('request');
+
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
-  const [otpCode, setOtpCode] = useState('');
+  const [otpDigits, setOtpDigits] = useState<string[]>(['', '', '', '', '', '']);
   const [showPassword, setShowPassword] = useState(false);
 
   const [isLoading, setIsLoading] = useState(false);
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
+  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
-  const destination = redirectUrl || '/profile';
+  const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
+  const destination = redirectUrl || '/courses';
 
-  // Countdown timer for resend
+  // Resend cooldown timer
   useEffect(() => {
     if (resendCooldown <= 0) return;
     const interval = setInterval(() => {
@@ -49,11 +54,45 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
     return () => clearInterval(interval);
   }, [resendCooldown]);
 
-  // Step 1: Submit email & password -> Trigger OTP email
-  const handleCredentialsSubmit = async (e: React.FormEvent) => {
+  // Direct Password Login (Instant)
+  const handlePasswordSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!email.trim() || !password) {
-      setError('Please enter both your email address and password.');
+      setError('Please enter both your email and password.');
+      return;
+    }
+
+    setIsLoading(true);
+    setError(null);
+    setInfoMessage(null);
+
+    try {
+      const res = await loginWithPassword({
+        email: email.trim(),
+        password,
+      });
+
+      if (!res.success) {
+        setError(res.error || 'Failed to sign in. Please check your credentials.');
+        setIsLoading(false);
+        return;
+      }
+
+      window.dispatchEvent(new Event('cq-auth-change'));
+      router.push(destination);
+      router.refresh();
+    } catch (err: unknown) {
+      const message = err instanceof Error ? err.message : 'An error occurred during sign in.';
+      setError(message);
+      setIsLoading(false);
+    }
+  };
+
+  // Step 1: Request OTP for Sign In
+  const handleRequestOtp = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!email.trim() || !password) {
+      setError('Please enter your email and password to verify your account.');
       return;
     }
 
@@ -68,27 +107,32 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
       });
 
       if (!res.success) {
-        setError(res.error || 'Failed to sign in. Please check your credentials.');
+        setError(res.error || 'Failed to initiate sign in.');
         setIsLoading(false);
         return;
       }
 
-      setStep('otp');
+      setOtpStep('verify');
       setResendCooldown(45);
-      setInfoMessage(`We've dispatched a 6-digit code to ${email.trim()}.`);
+      if (res.devOtpCode) {
+        setDevOtp(res.devOtpCode);
+      }
+      setInfoMessage(`A 6-digit code has been dispatched to ${email.trim()}.`);
       setIsLoading(false);
+      setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred during sign in.';
+      const message = err instanceof Error ? err.message : 'An error occurred.';
       setError(message);
       setIsLoading(false);
     }
   };
 
-  // Step 2: Submit OTP code -> Establish session
-  const handleOtpSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (!otpCode.trim() || otpCode.trim().length !== 6) {
-      setError('Please enter the complete 6-digit verification code.');
+  // Step 2: Verify OTP
+  const handleVerifyOtp = async (e?: React.FormEvent) => {
+    if (e) e.preventDefault();
+    const fullCode = otpDigits.join('');
+    if (fullCode.length !== 6) {
+      setError('Please enter all 6 digits.');
       return;
     }
 
@@ -98,11 +142,11 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
     try {
       const res = await verifySignInOtp({
         email: email.trim(),
-        code: otpCode.trim(),
+        code: fullCode,
       });
 
       if (!res.success) {
-        setError(res.error || 'Invalid or expired code. Please try again.');
+        setError(res.error || 'Incorrect code. Please try again.');
         setIsLoading(false);
         return;
       }
@@ -111,14 +155,57 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
       router.push(destination);
       router.refresh();
     } catch (err: unknown) {
-      const message = err instanceof Error ? err.message : 'An error occurred verifying code.';
+      const message = err instanceof Error ? err.message : 'Failed to verify code.';
       setError(message);
       setIsLoading(false);
     }
   };
 
-  // Resend OTP
-  const handleResend = async () => {
+  // Handle OTP digit inputs
+  const handleOtpChange = (index: number, value: string) => {
+    const digit = value.replace(/\D/g, '').slice(-1);
+    const newDigits = [...otpDigits];
+    newDigits[index] = digit;
+    setOtpDigits(newDigits);
+
+    if (digit && index < 5) {
+      otpInputRefs.current[index + 1]?.focus();
+    }
+
+    // Auto-submit on 6th digit
+    if (digit && index === 5 && newDigits.every((d) => d.length === 1)) {
+      setTimeout(() => {
+        handleVerifyOtp();
+      }, 50);
+    }
+  };
+
+  const handleOtpKeyDown = (index: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+    if (e.key === 'Backspace' && !otpDigits[index] && index > 0) {
+      otpInputRefs.current[index - 1]?.focus();
+    }
+  };
+
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (!pasted) return;
+
+    const newDigits = [...otpDigits];
+    for (let i = 0; i < pasted.length; i++) {
+      newDigits[i] = pasted[i];
+    }
+    setOtpDigits(newDigits);
+
+    const nextIndex = Math.min(pasted.length, 5);
+    otpInputRefs.current[nextIndex]?.focus();
+
+    if (pasted.length === 6) {
+      setTimeout(() => handleVerifyOtp(), 100);
+    }
+  };
+
+  const handleResendOtp = async () => {
     if (resendCooldown > 0 || isResending) return;
     setIsResending(true);
     setError(null);
@@ -130,214 +217,310 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
       });
 
       if (!res.success) {
-        setError(res.error || 'Could not resend code.');
-      } else {
-        setInfoMessage('A fresh verification code has been dispatched to your email.');
-        setResendCooldown(45);
+        setError(res.error || 'Failed to resend code.');
+        setIsResending(false);
+        return;
       }
+
+      setResendCooldown(45);
+      if (res.devOtpCode) {
+        setDevOtp(res.devOtpCode);
+      }
+      setInfoMessage(`A fresh 6-digit code has been prepared for ${email.trim()}.`);
+      setOtpDigits(['', '', '', '', '', '']);
+      otpInputRefs.current[0]?.focus();
     } catch {
-      setError('Failed to resend verification code.');
+      setError('Could not resend code. Please try again.');
     } finally {
       setIsResending(false);
     }
   };
 
   return (
-    <div className="w-full max-w-md bg-slate-900/90 border border-slate-800/90 rounded-3xl p-6 sm:p-8 backdrop-blur-2xl shadow-2xl relative overflow-hidden">
-      {/* Background radial glow */}
-      <div className="absolute top-0 right-0 w-48 h-48 bg-cyan-500/10 rounded-full blur-3xl pointer-events-none" />
-      <div className="absolute bottom-0 left-0 w-48 h-48 bg-indigo-500/10 rounded-full blur-3xl pointer-events-none" />
+    <div className="w-full rounded-2xl sm:rounded-3xl bg-slate-900/80 backdrop-blur-2xl border border-white/10 p-6 sm:p-8 shadow-2xl shadow-cyan-950/40 relative overflow-hidden">
+      {/* Radiant Top Glow Edge */}
+      <div className="absolute top-0 left-1/4 right-1/4 h-px bg-gradient-to-r from-transparent via-cyan-400 to-transparent" />
 
-      {/* Card Heading */}
-      <div className="text-center mb-6">
-        <div className="inline-flex items-center gap-1.5 px-3 py-1 rounded-full bg-cyan-500/10 border border-cyan-500/20 text-cyan-400 text-xs font-semibold mb-3">
-          <ShieldCheck className="w-3.5 h-3.5" />
-          <span>Email + Realtime Gmail OTP</span>
-        </div>
-        <h2 className="text-2xl font-black text-white tracking-tight">
-          {step === 'credentials' ? (
-            <>
-              Sign in to <span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">CodeQuiz</span>
-            </>
-          ) : (
-            <>
-              Verify <span className="bg-gradient-to-r from-cyan-400 to-indigo-400 bg-clip-text text-transparent">Security Code</span>
-            </>
-          )}
-        </h2>
-        <p className="text-xs sm:text-sm text-slate-400 mt-1">
-          {step === 'credentials'
-            ? 'Sign in securely with your email and password.'
-            : `Enter the 6-digit code sent to ${email}.`}
-        </p>
+      {/* Mode Selector Tabs */}
+      <div className="flex rounded-xl bg-slate-950/60 p-1 border border-white/5 mb-6">
+        <button
+          type="button"
+          onClick={() => {
+            setAuthMode('password');
+            setError(null);
+          }}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            authMode === 'password'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md shadow-cyan-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <Lock className="w-3.5 h-3.5" />
+          <span>Password Sign In</span>
+        </button>
+        <button
+          type="button"
+          onClick={() => {
+            setAuthMode('otp');
+            setError(null);
+          }}
+          className={`flex-1 py-2 text-xs font-bold rounded-lg transition-all flex items-center justify-center gap-1.5 ${
+            authMode === 'otp'
+              ? 'bg-gradient-to-r from-cyan-500 to-blue-600 text-slate-950 shadow-md shadow-cyan-500/20'
+              : 'text-slate-400 hover:text-slate-200'
+          }`}
+        >
+          <KeyRound className="w-3.5 h-3.5" />
+          <span>OTP Code Sign In</span>
+        </button>
       </div>
 
-      {/* Info Notification */}
-      {infoMessage && (
-        <div className="mb-4 p-3 rounded-xl bg-cyan-500/10 border border-cyan-500/30 flex items-start gap-2.5 text-xs text-cyan-300">
-          <CheckCircle2 className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
-          <span className="leading-relaxed">{infoMessage}</span>
-        </div>
-      )}
-
-      {/* Error Alert */}
+      {/* Error Message Box */}
       {error && (
-        <div className="mb-4 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 flex items-start gap-2.5 text-xs text-rose-300">
+        <div className="mb-5 p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-300 text-xs flex items-start gap-2.5 animate-fade-in">
           <AlertCircle className="w-4 h-4 shrink-0 text-rose-400 mt-0.5" />
           <span className="leading-relaxed">{error}</span>
         </div>
       )}
 
-      {step === 'credentials' ? (
-        /* STEP 1: EMAIL & PASSWORD */
-        <form onSubmit={handleCredentialsSubmit} className="space-y-4">
-          {/* Email input */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Mail className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Email Address</span>
-            </label>
-            <input
-              type="email"
-              required
-              value={email}
-              onChange={(e) => setEmail(e.target.value)}
-              placeholder="developer@example.com"
-              className="w-full px-4 py-3 bg-slate-950/90 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner"
-            />
-          </div>
+      {/* Info Message Box */}
+      {infoMessage && (
+        <div className="mb-5 p-3.5 rounded-xl bg-cyan-500/10 border border-cyan-500/30 text-cyan-300 text-xs flex items-start gap-2.5 animate-fade-in">
+          <CheckCircle2 className="w-4 h-4 shrink-0 text-cyan-400 mt-0.5" />
+          <span className="leading-relaxed">{infoMessage}</span>
+        </div>
+      )}
 
-          {/* Password input */}
-          <div className="space-y-1.5">
-            <label className="text-xs font-semibold text-slate-300 flex items-center gap-1.5">
-              <Lock className="w-3.5 h-3.5 text-cyan-400" />
-              <span>Password</span>
+      {/* Dev / Test Mode OTP Banner */}
+      {devOtp && (
+        <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-col gap-1.5 animate-scale-in">
+          <div className="flex items-center gap-1.5 font-bold text-amber-300 uppercase tracking-wider text-[10px]">
+            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
+            <span>Developer Test Mode • Quick Code</span>
+          </div>
+          <div className="text-xs font-mono font-black text-amber-100 tracking-widest bg-amber-950/40 p-2 rounded-lg border border-amber-500/20 text-center">
+            {devOtp}
+          </div>
+        </div>
+      )}
+
+      {/* 1. INSTANT PASSWORD LOGIN FORM */}
+      {authMode === 'password' && (
+        <form onSubmit={handlePasswordSubmit} className="space-y-4">
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              Email Address
             </label>
             <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Mail className="w-4 h-4" />
+              </div>
+              <input
+                type="email"
+                required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
+                placeholder="developer@codequiz.dev"
+                autoComplete="email"
+                className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+              />
+            </div>
+          </div>
+
+          <div>
+            <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+              Password
+            </label>
+            <div className="relative">
+              <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                <Lock className="w-4 h-4" />
+              </div>
               <input
                 type={showPassword ? 'text' : 'password'}
                 required
                 value={password}
                 onChange={(e) => setPassword(e.target.value)}
                 placeholder="••••••••"
-                className="w-full px-4 py-3 bg-slate-950/90 border border-slate-800 rounded-xl text-sm text-white placeholder:text-slate-600 focus:outline-none focus:border-cyan-500 focus:ring-1 focus:ring-cyan-500 transition-all shadow-inner pr-10"
+                autoComplete="current-password"
+                className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
               />
               <button
                 type="button"
                 onClick={() => setShowPassword(!showPassword)}
-                className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300 transition-colors cursor-pointer"
+                className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200"
               >
                 {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
               </button>
             </div>
           </div>
 
-          {/* Submit button */}
           <button
             type="submit"
             disabled={isLoading}
-            className="w-full py-3 px-4 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 hover:from-cyan-300 hover:to-indigo-300 transition-all shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50 mt-3"
+            className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer mt-2"
           >
             {isLoading ? (
               <>
                 <Loader2 className="w-4 h-4 animate-spin" />
-                <span>Sending Security Code...</span>
+                <span>Authenticating...</span>
               </>
             ) : (
               <>
-                <span>Continue & Send OTP</span>
+                <span>Sign In Instantly</span>
                 <ArrowRight className="w-4 h-4" />
               </>
             )}
           </button>
         </form>
-      ) : (
-        /* STEP 2: OTP VERIFICATION */
-        <form onSubmit={handleOtpSubmit} className="space-y-5">
-          <div className="space-y-2">
-            <label className="text-xs font-semibold text-slate-300 flex items-center justify-between">
-              <span className="flex items-center gap-1.5">
-                <ShieldCheck className="w-3.5 h-3.5 text-cyan-400" />
-                <span>Enter 6-Digit OTP Code</span>
-              </span>
-              <span className="text-[11px] text-amber-400 font-mono">Expires in 10 mins</span>
-            </label>
+      )}
 
-            <input
-              type="text"
-              required
-              maxLength={6}
-              autoFocus
-              value={otpCode}
-              onChange={(e) => setOtpCode(e.target.value.replace(/[^0-9]/g, ''))}
-              placeholder="000000"
-              className="w-full text-center tracking-[0.6em] font-mono text-2xl font-extrabold px-4 py-3.5 bg-slate-950/90 border border-cyan-500/40 rounded-xl text-cyan-300 placeholder:text-slate-700 focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-500/30 transition-all shadow-inner"
-            />
-          </div>
+      {/* 2. OTP SIGN IN FLOW */}
+      {authMode === 'otp' && (
+        <>
+          {otpStep === 'request' ? (
+            <form onSubmit={handleRequestOtp} className="space-y-4">
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                  Email Address
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Mail className="w-4 h-4" />
+                  </div>
+                  <input
+                    type="email"
+                    required
+                    value={email}
+                    onChange={(e) => setEmail(e.target.value)}
+                    placeholder="developer@codequiz.dev"
+                    className="w-full pl-10 pr-4 py-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+                  />
+                </div>
+              </div>
 
-          {/* Action buttons */}
-          <div className="space-y-2.5">
-            <button
-              type="submit"
-              disabled={isLoading || otpCode.length !== 6}
-              className="w-full py-3 px-4 rounded-xl font-bold text-sm text-slate-950 bg-gradient-to-r from-cyan-400 via-sky-400 to-indigo-400 hover:from-cyan-300 hover:to-indigo-300 transition-all shadow-lg shadow-cyan-500/25 flex items-center justify-center gap-2 cursor-pointer disabled:opacity-50"
-            >
-              {isLoading ? (
-                <>
-                  <Loader2 className="w-4 h-4 animate-spin" />
-                  <span>Verifying Code...</span>
-                </>
-              ) : (
-                <>
-                  <span>Verify & Sign In</span>
-                  <CheckCircle2 className="w-4 h-4" />
-                </>
-              )}
-            </button>
+              <div>
+                <label className="block text-xs font-semibold text-slate-300 uppercase tracking-wider mb-2">
+                  Password
+                </label>
+                <div className="relative">
+                  <div className="absolute inset-y-0 left-0 pl-3.5 flex items-center pointer-events-none text-slate-400">
+                    <Lock className="w-4 h-4" />
+                  </div>
+                  <input
+                    type={showPassword ? 'text' : 'password'}
+                    required
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    placeholder="••••••••"
+                    className="w-full pl-10 pr-10 py-3 rounded-xl bg-slate-950/70 border border-white/10 text-white text-sm placeholder:text-slate-500 focus:outline-none focus:border-cyan-400 focus:ring-1 focus:ring-cyan-400 transition-colors"
+                  />
+                  <button
+                    type="button"
+                    onClick={() => setShowPassword(!showPassword)}
+                    className="absolute inset-y-0 right-0 pr-3.5 flex items-center text-slate-400 hover:text-slate-200"
+                  >
+                    {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
+                  </button>
+                </div>
+              </div>
 
-            {/* Back to credentials & Resend */}
-            <div className="flex items-center justify-between text-xs pt-1 px-1">
               <button
-                type="button"
-                onClick={() => {
-                  setStep('credentials');
-                  setOtpCode('');
-                  setError(null);
-                  setInfoMessage(null);
-                }}
-                className="text-slate-400 hover:text-white flex items-center gap-1 transition-colors cursor-pointer"
+                type="submit"
+                disabled={isLoading}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer mt-2"
               >
-                <ArrowLeft className="w-3.5 h-3.5" />
-                <span>Change Email / Back</span>
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Sending Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <span>Send Verification Code</span>
+                    <ArrowRight className="w-4 h-4" />
+                  </>
+                )}
+              </button>
+            </form>
+          ) : (
+            <form onSubmit={handleVerifyOtp} className="space-y-5">
+              <div className="text-center space-y-1">
+                <span className="text-xs text-slate-400">Enter the 6-digit verification code sent to</span>
+                <div className="text-sm font-bold text-cyan-300 font-mono">{email}</div>
+              </div>
+
+              {/* 6 Individual Digit Inputs */}
+              <div className="flex justify-between gap-2 sm:gap-2.5 max-w-sm mx-auto" onPaste={handleOtpPaste}>
+                {otpDigits.map((digit, idx) => (
+                  <input
+                    key={idx}
+                    ref={(el) => {
+                      otpInputRefs.current[idx] = el;
+                    }}
+                    type="text"
+                    inputMode="numeric"
+                    maxLength={1}
+                    value={digit}
+                    onChange={(e) => handleOtpChange(idx, e.target.value)}
+                    onKeyDown={(e) => handleOtpKeyDown(idx, e)}
+                    className="w-11 sm:w-12 h-13 sm:h-14 text-center font-mono font-black text-xl sm:text-2xl text-white bg-slate-950/80 border border-white/15 rounded-xl focus:outline-none focus:border-cyan-400 focus:ring-2 focus:ring-cyan-400/40 shadow-inner transition-all"
+                  />
+                ))}
+              </div>
+
+              <button
+                type="submit"
+                disabled={isLoading || otpDigits.some((d) => !d)}
+                className="w-full py-3.5 px-4 rounded-xl bg-gradient-to-r from-cyan-400 via-sky-400 to-blue-500 text-slate-950 font-black text-sm tracking-wide shadow-lg shadow-cyan-500/25 hover:shadow-cyan-500/40 hover:scale-[1.01] active:scale-[0.99] transition-all flex items-center justify-center gap-2 disabled:opacity-50 disabled:pointer-events-none cursor-pointer"
+              >
+                {isLoading ? (
+                  <>
+                    <Loader2 className="w-4 h-4 animate-spin" />
+                    <span>Verifying Code...</span>
+                  </>
+                ) : (
+                  <>
+                    <ShieldCheck className="w-4 h-4" />
+                    <span>Confirm &amp; Sign In</span>
+                  </>
+                )}
               </button>
 
-              <button
-                type="button"
-                onClick={handleResend}
-                disabled={resendCooldown > 0 || isResending}
-                className="text-cyan-400 hover:text-cyan-300 font-semibold flex items-center gap-1 transition-colors cursor-pointer disabled:opacity-40 disabled:hover:text-cyan-400"
-              >
-                <RotateCcw className={`w-3.5 h-3.5 ${isResending ? 'animate-spin' : ''}`} />
-                <span>
+              <div className="flex items-center justify-between pt-2 text-xs">
+                <button
+                  type="button"
+                  onClick={() => {
+                    setOtpStep('request');
+                    setError(null);
+                  }}
+                  className="text-slate-400 hover:text-white transition-colors"
+                >
+                  ← Change Email
+                </button>
+
+                <button
+                  type="button"
+                  onClick={handleResendOtp}
+                  disabled={resendCooldown > 0 || isResending}
+                  className="text-cyan-400 hover:text-cyan-300 font-semibold disabled:text-slate-600 transition-colors"
+                >
                   {resendCooldown > 0 ? `Resend in ${resendCooldown}s` : 'Resend Code'}
-                </span>
-              </button>
-            </div>
-          </div>
-        </form>
+                </button>
+              </div>
+            </form>
+          )}
+        </>
       )}
 
       {/* Switch to Sign Up */}
-      <div className="mt-6 pt-5 border-t border-slate-800/80 text-center">
-        <p className="text-xs text-slate-400">
-          Don&apos;t have a CodeQuiz account?{' '}
-          <Link
-            href={`/sign-up${redirectUrl ? `?redirect_url=${encodeURIComponent(redirectUrl)}` : ''}`}
-            className="text-cyan-400 hover:text-cyan-300 font-bold transition-colors ml-1"
-          >
-            Sign up
-          </Link>
-        </p>
+      <div className="mt-6 pt-5 border-t border-white/5 text-center text-xs text-slate-400">
+        Don&apos;t have an account yet?{' '}
+        <Link
+          href={`/sign-up${redirectUrl ? `?redirect_url=${encodeURIComponent(redirectUrl)}` : ''}`}
+          className="font-bold text-cyan-400 hover:text-cyan-300 hover:underline transition-colors"
+        >
+          Create Free Account →
+        </Link>
       </div>
     </div>
   );
