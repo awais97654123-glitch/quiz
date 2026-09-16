@@ -15,7 +15,6 @@ import {
   RotateCcw,
   KeyRound,
   CheckCircle2,
-  Sparkles,
 } from 'lucide-react';
 import { loginWithPassword, initiateSignIn, verifySignInOtp, resendVerificationOtp } from '@/app/actions/auth';
 
@@ -39,7 +38,6 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
   const [isResending, setIsResending] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [infoMessage, setInfoMessage] = useState<string | null>(null);
-  const [devOtp, setDevOtp] = useState<string | null>(null);
   const [resendCooldown, setResendCooldown] = useState(0);
 
   const otpInputRefs = useRef<(HTMLInputElement | null)[]>([]);
@@ -114,10 +112,7 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
 
       setOtpStep('verify');
       setResendCooldown(45);
-      if (res.devOtpCode) {
-        setDevOtp(res.devOtpCode);
-      }
-      setInfoMessage(`A 6-digit code has been dispatched to ${email.trim()}.`);
+      setInfoMessage(res.message || `A 6-digit verification code has been dispatched to ${email.trim()}.`);
       setIsLoading(false);
       setTimeout(() => otpInputRefs.current[0]?.focus(), 100);
     } catch (err: unknown) {
@@ -223,10 +218,7 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
       }
 
       setResendCooldown(45);
-      if (res.devOtpCode) {
-        setDevOtp(res.devOtpCode);
-      }
-      setInfoMessage(`A fresh 6-digit code has been prepared for ${email.trim()}.`);
+      setInfoMessage(`A fresh 6-digit verification code has been dispatched to ${email.trim()}.`);
       setOtpDigits(['', '', '', '', '', '']);
       otpInputRefs.current[0]?.focus();
     } catch {
@@ -291,18 +283,6 @@ export function SupabaseLoginForm({ redirectUrl }: Props) {
         </div>
       )}
 
-      {/* Dev / Test Mode OTP Banner */}
-      {devOtp && (
-        <div className="mb-5 p-3.5 rounded-xl bg-amber-500/10 border border-amber-500/30 text-amber-200 text-xs flex flex-col gap-1.5 animate-scale-in">
-          <div className="flex items-center gap-1.5 font-bold text-amber-300 uppercase tracking-wider text-[10px]">
-            <Sparkles className="w-3.5 h-3.5 text-amber-400" />
-            <span>Developer Test Mode • Quick Code</span>
-          </div>
-          <div className="text-xs font-mono font-black text-amber-100 tracking-widest bg-amber-950/40 p-2 rounded-lg border border-amber-500/20 text-center">
-            {devOtp}
-          </div>
-        </div>
-      )}
 
       {/* 1. INSTANT PASSWORD LOGIN FORM */}
       {authMode === 'password' && (

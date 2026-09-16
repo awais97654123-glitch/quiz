@@ -9,6 +9,8 @@
  * 4. Platform Update & Student News Broadcast Email
  */
 
+import nodemailer from 'nodemailer';
+
 const RESEND_API_URL = 'https://api.resend.com/emails';
 const DEFAULT_API_KEY = process.env.RESEND_API_KEY || '';
 const DEFAULT_FROM = process.env.RESEND_FROM_EMAIL || 'CodeQuiz Arena <onboarding@resend.dev>';
@@ -27,20 +29,62 @@ interface SendEmailResult {
 }
 
 /**
- * Base email dispatcher communicating silently in the background with Resend
+ * Base email dispatcher supporting both direct SMTP (Gmail, Brevo, custom) and Resend API
  */
 export async function sendEmail({ to, subject, html }: SendEmailParams): Promise<SendEmailResult> {
-  const apiKey = process.env.RESEND_API_KEY || DEFAULT_API_KEY;
-  const from = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
-
   const recipients = Array.isArray(to) ? to : [to];
   const validRecipients = recipients
     .map((r) => r.trim())
     .filter((r) => r.length > 3 && r.includes('@'));
 
   if (validRecipients.length === 0) {
-    console.warn('[Resend Email] No valid recipient email provided.');
-    return { success: false, error: 'No valid recipient' };
+    console.warn('[Email] No valid recipient email provided.');
+    return { success: false, error: 'No valid recipient email provided.' };
+  }
+
+  // 1. Direct SMTP / Gmail Dispatcher
+  const smtpHost = process.env.SMTP_HOST || (process.env.GMAIL_USER ? 'smtp.gmail.com' : '');
+  const smtpPort = process.env.SMTP_PORT ? parseInt(process.env.SMTP_PORT, 10) : 465;
+  const smtpUser = process.env.SMTP_USER || process.env.GMAIL_USER || '';
+  const smtpPass = process.env.SMTP_PASS || process.env.GMAIL_APP_PASSWORD || '';
+  const smtpFrom = process.env.SMTP_FROM || process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
+
+  if (smtpHost && smtpUser && smtpPass) {
+    try {
+      const transporter = nodemailer.createTransport({
+        host: smtpHost,
+        port: smtpPort,
+        secure: smtpPort === 465,
+        auth: {
+          user: smtpUser,
+          pass: smtpPass,
+        },
+      });
+
+      const info = await transporter.sendMail({
+        from: smtpFrom.includes('<') ? smtpFrom : `"CodeQuiz Arena" <${smtpUser}>`,
+        to: validRecipients,
+        subject,
+        html,
+      });
+
+      console.log(`[SMTP Email] Successfully dispatched "${subject}" to [${validRecipients.join(', ')}]. Message ID:`, info.messageId);
+      return { success: true, id: info.messageId };
+    } catch (smtpErr: any) {
+      console.error('[SMTP Email Error]:', smtpErr?.message || smtpErr);
+      return { success: false, error: `SMTP delivery failed: ${smtpErr?.message || 'Check credentials'}` };
+    }
+  }
+
+  // 2. Resend API Dispatcher
+  const apiKey = process.env.RESEND_API_KEY || DEFAULT_API_KEY;
+  const from = process.env.RESEND_FROM_EMAIL || DEFAULT_FROM;
+
+  if (!apiKey) {
+    return {
+      success: false,
+      error: 'No email delivery service configured. Please provide RESEND_API_KEY or SMTP credentials.',
+    };
   }
 
   try {
@@ -63,15 +107,24 @@ export async function sendEmail({ to, subject, html }: SendEmailParams): Promise
     const data = await response.json().catch(() => ({}));
 
     if (!response.ok) {
-      console.warn(`[Resend Email] Delivery status ${response.status}:`, data.message || data);
-      return { success: false, error: data.message || 'Failed to send' };
+      const errMsg = data?.message || data?.error || `HTTP ${response.status}`;
+      console.warn(`[Resend Email Delivery Notice] Status ${response.status}:`, errMsg);
+
+      if (errMsg.includes('only send testing emails to your own email address') || response.status === 403) {
+        return {
+          success: false,
+          error: `Resend test account limitation: Free onboarding domain can only send to the account owner email (malikabubakkar523@gmail.com). To send to any Gmail address, verify your domain in Resend or configure Gmail SMTP in .env.`,
+        };
+      }
+
+      return { success: false, error: errMsg };
     }
 
     console.log(`[Resend Email] Successfully dispatched email "${subject}" to [${validRecipients.join(', ')}]. ID:`, data.id);
     return { success: true, id: data.id };
-  } catch (err) {
-    console.error('[Resend Email] Background execution error:', err);
-    return { success: false, error: String(err) };
+  } catch (err: any) {
+    console.error('[Resend Email] Network execution error:', err);
+    return { success: false, error: err?.message || 'Network error delivering email' };
   }
 }
 

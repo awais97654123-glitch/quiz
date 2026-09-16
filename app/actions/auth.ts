@@ -270,39 +270,28 @@ export async function initiateSignUp(params: {
       console.warn('[DB OTP storage warning - relying on memory store]:', dbErr);
     }
 
-    // 3. Dispatch real email via Resend
-    let emailSent = false;
-    let devOtpCode: string | undefined = undefined;
+    // 3. Dispatch real email via SMTP or Resend
+    const emailResult = await sendOtpEmail({
+      to: cleanEmail,
+      code,
+      type: 'SIGNUP',
+      name: cleanName,
+    });
 
-    try {
-      const emailResult = await sendOtpEmail({
-        to: cleanEmail,
-        code,
-        type: 'SIGNUP',
-        name: cleanName,
-      });
-
-      if (emailResult.success) {
-        emailSent = true;
-      } else {
-        console.warn('[Resend OTP Notice]', emailResult.error);
-        devOtpCode = code;
-      }
-    } catch (e) {
-      console.warn('[Resend OTP Exception]', e);
-      devOtpCode = code;
+    if (!emailResult.success) {
+      return {
+        success: false,
+        error: emailResult.error || `Could not send verification email to ${cleanEmail}. Please verify your email or check configuration.`,
+      };
     }
 
-    console.log(`[AUTH CODE VERIFICATION] 6-digit OTP for ${cleanEmail} is: ${code}`);
+    console.log(`[AUTH CODE VERIFICATION] OTP successfully dispatched to email: ${cleanEmail}`);
 
     return {
       success: true,
       email: cleanEmail,
-      emailSent,
-      devOtpCode,
-      message: emailSent
-        ? `A 6-digit verification code has been dispatched to ${cleanEmail}.`
-        : `A verification code has been prepared for ${cleanEmail}.`,
+      emailSent: true,
+      message: `A 6-digit verification code has been dispatched to ${cleanEmail}. Please check your Gmail/inbox.`,
     };
   } catch (err: any) {
     console.error('Error in initiateSignUp:', err);
@@ -534,35 +523,28 @@ export async function initiateSignIn(params: {
       // ignore
     }
 
-    // Send email via Resend
-    let emailSent = false;
-    let devOtpCode: string | undefined = undefined;
+    // Send email via SMTP or Resend
+    const emailResult = await sendOtpEmail({
+      to: cleanEmail,
+      code,
+      type: 'LOGIN',
+      name: user.name || undefined,
+    });
 
-    try {
-      const emailResult = await sendOtpEmail({
-        to: cleanEmail,
-        code,
-        type: 'LOGIN',
-        name: user.name || undefined,
-      });
-
-      if (emailResult.success) {
-        emailSent = true;
-      } else {
-        devOtpCode = code;
-      }
-    } catch {
-      devOtpCode = code;
+    if (!emailResult.success) {
+      return {
+        success: false,
+        error: emailResult.error || `Could not send security code to ${cleanEmail}.`,
+      };
     }
 
-    console.log(`[AUTH CODE VERIFICATION] Sign in OTP for ${cleanEmail} is: ${code}`);
+    console.log(`[AUTH CODE VERIFICATION] Login OTP successfully dispatched to email: ${cleanEmail}`);
 
     return {
       success: true,
       email: cleanEmail,
-      emailSent,
-      devOtpCode,
-      message: `A 6-digit security code has been generated for ${cleanEmail}.`,
+      emailSent: true,
+      message: `A 6-digit sign-in code has been sent to ${cleanEmail}. Please check your Gmail/inbox.`,
     };
   } catch (err: any) {
     console.error('Error in initiateSignIn:', err);
@@ -713,28 +695,25 @@ export async function resendVerificationOtp(params: {
       // ignore
     }
 
-    let devOtpCode: string | undefined = undefined;
-    let emailSent = false;
+    const res = await sendOtpEmail({
+      to: cleanEmail,
+      code,
+      type: params.type,
+    });
 
-    try {
-      const res = await sendOtpEmail({
-        to: cleanEmail,
-        code,
-        type: params.type,
-      });
-      if (res.success) emailSent = true;
-      else devOtpCode = code;
-    } catch {
-      devOtpCode = code;
+    if (!res.success) {
+      return {
+        success: false,
+        error: res.error || `Could not send new code to ${cleanEmail}.`,
+      };
     }
 
-    console.log(`[AUTH CODE VERIFICATION] Resent OTP for ${cleanEmail} is: ${code}`);
+    console.log(`[AUTH CODE VERIFICATION] Resent OTP successfully dispatched to: ${cleanEmail}`);
 
     return {
       success: true,
-      emailSent,
-      devOtpCode,
-      message: `A new 6-digit code was prepared for ${cleanEmail}.`,
+      emailSent: true,
+      message: `A fresh 6-digit code has been sent to ${cleanEmail}. Please check your Gmail/inbox.`,
     };
   } catch (err: any) {
     console.error('Error in resendVerificationOtp:', err);
