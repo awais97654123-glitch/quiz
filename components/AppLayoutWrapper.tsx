@@ -38,7 +38,7 @@ export function AppLayoutWrapper({ children }: { children: React.ReactNode }) {
 
   return (
     <div
-      className={`flex-1 flex flex-col min-h-screen w-full transition-[padding] duration-300 ease-in-out ${
+      className={`flex-1 flex flex-col min-h-screen w-full transform-gpu will-change-[padding] transition-[padding] duration-300 ease-[cubic-bezier(0.16,1,0.3,1)] ${
         mounted && !isCollapsed ? 'md:pl-64' : 'md:pl-[74px]'
       }`}
     >
