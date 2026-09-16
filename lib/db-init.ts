@@ -205,17 +205,17 @@ export async function ensureDatabaseSchema(): Promise<boolean> {
 
   isInitializing = true;
   try {
-    // Check if User table exists
-    const checkTable = (await prisma.$queryRawUnsafe(`
+    // Check if EmailVerificationOtp and User tables exist
+    const checkTables = (await prisma.$queryRawUnsafe(`
       SELECT table_name 
       FROM information_schema.tables 
-      WHERE table_schema = 'public' AND table_name = 'User'
-      LIMIT 1;
+      WHERE table_schema = 'public' AND table_name IN ('User', 'EmailVerificationOtp', 'Course');
     `).catch(() => [])) as any[];
 
-    if (!checkTable || checkTable.length === 0) {
+    const foundNames = new Set(checkTables.map((t: any) => t.table_name));
+
+    if (!foundNames.has('User') || !foundNames.has('EmailVerificationOtp') || !foundNames.has('Course')) {
       console.log('[DB-Init] Missing tables detected. Executing self-healing DDL statements...');
-      // Split statements and execute sequentially
       const statements = DDL_TABLES_SQL
         .split(';')
         .map((s) => s.trim())
@@ -225,13 +225,19 @@ export async function ensureDatabaseSchema(): Promise<boolean> {
         try {
           await prisma.$executeRawUnsafe(stmt);
         } catch (stmtErr: any) {
-          // Ignore index already exists or constraint already exists
           if (!stmtErr?.message?.includes('already exists')) {
             console.warn('[DB-Init] DDL execution notice:', stmtErr?.message);
           }
         }
       }
       console.log('[DB-Init] ✓ Self-healing DDL completed successfully.');
+    }
+
+    // Ensure passwordHash column on User
+    try {
+      await prisma.$executeRawUnsafe('ALTER TABLE "User" ADD COLUMN IF NOT EXISTS "passwordHash" TEXT;');
+    } catch {
+      // ignore
     }
 
     isSchemaEnsured = true;
