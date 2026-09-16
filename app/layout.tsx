@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
 import { Sidebar } from '@/components/Sidebar';
+import { Header } from '@/components/Header';
 import { AppLayoutWrapper } from '@/components/AppLayoutWrapper';
 import { Footer } from '@/components/Footer';
 import { RouteProgress } from '@/components/RouteProgress';
@@ -18,10 +19,10 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'CodeQuiz Arena | Developer Battleground',
+  title: 'QuizCode | Code Fast. Challenge Friends. Master Quizzes.',
   description:
-    'The interactive quiz platform for developers. Practice coding concepts, create multiplayer quiz rooms, and challenge your friends in real-time.',
-  keywords: ['developer quiz', 'coding quiz', 'multiplayer quiz', 'javascript quiz', 'react test', 'programming challenge'],
+    'The interactive coding quiz arena for developers. Practice concepts, host live multiplayer rooms, and compete in 1v1 duels.',
+  keywords: ['coding quiz', 'developer challenge', 'multiplayer quiz room', 'javascript quiz', 'react quiz', 'python duel'],
   icons: {
     icon: [
       { url: '/graduation-cap.svg', type: 'image/svg+xml' },
@@ -39,7 +40,7 @@ export default function RootLayout({
   return (
     <html lang="en" className="h-full antialiased dark overflow-x-hidden" suppressHydrationWarning>
       <body
-        className="min-h-screen flex flex-col bg-[#080c14] text-slate-100 font-sans relative bg-grid-pattern selection:bg-cyan-500/30 selection:text-cyan-200 overflow-x-hidden w-full max-w-full"
+        className="min-h-screen flex flex-col bg-[#070b14] text-slate-100 font-sans relative bg-grid-pattern selection:bg-[#00d9ff]/30 selection:text-[#00d9ff] overflow-x-hidden w-full max-w-full"
         suppressHydrationWarning
       >
         {/* Startup & Navigation Loaders */}
@@ -58,16 +59,16 @@ export default function RootLayout({
 
         {/* Rich Ambient Glass Lighting Mesh */}
         <div className="fixed inset-0 pointer-events-none radial-glow -z-10" />
-        <div className="fixed -top-40 left-1/4 w-[500px] h-[500px] bg-cyan-500/15 rounded-full blur-[120px] pointer-events-none -z-10" />
-        <div className="fixed top-1/3 -right-40 w-[550px] h-[550px] bg-indigo-500/15 rounded-full blur-[130px] pointer-events-none -z-10" />
-        <div className="fixed bottom-10 -left-40 w-[500px] h-[500px] bg-violet-500/15 rounded-full blur-[120px] pointer-events-none -z-10" />
-        <div className="fixed -bottom-20 right-1/4 w-[450px] h-[450px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none -z-10" />
+        <div className="fixed -top-40 left-1/4 w-[500px] h-[500px] bg-[#00d9ff]/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+        <div className="fixed top-1/3 -right-40 w-[550px] h-[550px] bg-sky-500/10 rounded-full blur-[140px] pointer-events-none -z-10" />
+        <div className="fixed bottom-10 -left-40 w-[500px] h-[500px] bg-blue-600/10 rounded-full blur-[140px] pointer-events-none -z-10" />
 
-        {/* Collapsible Glassmorphic Sidebar */}
+        {/* Left Navigation Sidebar */}
         <Sidebar />
 
-        {/* Dynamic Desktop Layout Wrapper */}
+        {/* Dynamic Desktop Layout Wrapper with Integrated Header */}
         <AppLayoutWrapper>
+          <Header />
           <main className="flex-1 flex flex-col w-full relative z-0">{children}</main>
           <Footer />
         </AppLayoutWrapper>
