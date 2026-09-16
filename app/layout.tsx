@@ -1,6 +1,7 @@
 import type { Metadata, Viewport } from 'next';
 import { Suspense } from 'react';
-import { Navbar } from '@/components/Navbar';
+import { Sidebar } from '@/components/Sidebar';
+import { AppLayoutWrapper } from '@/components/AppLayoutWrapper';
 import { Footer } from '@/components/Footer';
 import { RouteProgress } from '@/components/RouteProgress';
 import { NetworkStatus } from '@/components/NetworkStatus';
@@ -17,12 +18,16 @@ export const viewport: Viewport = {
 };
 
 export const metadata: Metadata = {
-  title: 'CodeQuiz | Test Your Knowledge. Challenge Your Friends.',
+  title: 'CodeQuiz Arena | Developer Battleground',
   description:
     'The interactive quiz platform for developers. Practice coding concepts, create multiplayer quiz rooms, and challenge your friends in real-time.',
   keywords: ['developer quiz', 'coding quiz', 'multiplayer quiz', 'javascript quiz', 'react test', 'programming challenge'],
   icons: {
-    icon: '/favicon.ico',
+    icon: [
+      { url: '/graduation-cap.svg', type: 'image/svg+xml' },
+    ],
+    shortcut: '/graduation-cap.svg',
+    apple: '/graduation-cap.svg',
   },
 };
 
@@ -58,9 +63,14 @@ export default function RootLayout({
         <div className="fixed bottom-10 -left-40 w-[500px] h-[500px] bg-violet-500/15 rounded-full blur-[120px] pointer-events-none -z-10" />
         <div className="fixed -bottom-20 right-1/4 w-[450px] h-[450px] bg-cyan-600/10 rounded-full blur-[120px] pointer-events-none -z-10" />
 
-        <Navbar />
-        <main className="flex-1 flex flex-col w-full relative z-0">{children}</main>
-        <Footer />
+        {/* Collapsible Glassmorphic Sidebar */}
+        <Sidebar />
+
+        {/* Dynamic Desktop Layout Wrapper */}
+        <AppLayoutWrapper>
+          <main className="flex-1 flex flex-col w-full relative z-0">{children}</main>
+          <Footer />
+        </AppLayoutWrapper>
       </body>
     </html>
   );

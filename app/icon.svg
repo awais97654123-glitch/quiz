@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" fill="none">
+  <defs>
+    <linearGradient id="favCapGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" stop-color="#22d3ee"/>
+      <stop offset="60%" stop-color="#0284c7"/>
+      <stop offset="100%" stop-color="#6366f1"/>
+    </linearGradient>
+    <linearGradient id="favTassel" x1="0%" y1="0%" x2="0%" y2="100%">
+      <stop offset="0%" stop-color="#38bdf8"/>
+      <stop offset="100%" stop-color="#f59e0b"/>
+    </linearGradient>
+  </defs>
+  <!-- Background Badge Circle -->
+  <rect width="32" height="32" rx="8" fill="#080c14"/>
+  <rect width="30" height="30" x="1" y="1" rx="7" stroke="url(#favCapGrad)" stroke-width="1.2" stroke-opacity="0.6"/>
+
+  <!-- Lower Skull Cap Base -->
+  <path d="M9 18 C9 22.5, 23 22.5, 23 18 L23 20 C23 24.5, 9 24.5, 9 20 Z" fill="url(#favCapGrad)"/>
+  
+  <!-- Upper Mortarboard Diamond -->
+  <polygon points="16,7 28,13 16,19 4,13" fill="url(#favCapGrad)"/>
+  <polygon points="16,8.5 25.5,13 16,17.5 6.5,13" fill="#0f172a"/>
+
+  <!-- Apex Button -->
+  <circle cx="16" cy="13" r="1.5" fill="#38bdf8"/>
+
+  <!-- Tassel -->
+  <path d="M16 13 Q22 14 24 18" stroke="url(#favTassel)" stroke-width="1.2" stroke-linecap="round" fill="none"/>
+  <circle cx="24" cy="18.5" r="1" fill="#fbbf24"/>
+  <line x1="24" y1="19" x2="24" y2="23" stroke="#fbbf24" stroke-width="1" stroke-linecap="round"/>
+</svg>

@@ -23,8 +23,13 @@ export function Footer() {
         <div className="flex flex-col md:flex-row items-center justify-between gap-6">
           {/* Logo & Brand */}
           <div className="flex items-center gap-3">
-            <div className="w-9 h-9 rounded-2xl bg-gradient-to-br from-cyan-400 via-sky-500 to-indigo-600 flex items-center justify-center shadow-lg shadow-cyan-500/25 border border-white/20">
-              <Zap className="w-5 h-5 text-slate-950 fill-slate-950" />
+            <div className="w-10 h-10 rounded-2xl bg-gradient-to-br from-cyan-500/20 via-sky-500/15 to-indigo-600/25 border border-cyan-400/30 flex items-center justify-center shadow-lg shadow-cyan-500/20 p-1">
+              {/* eslint-disable-next-line @next/next/no-img-element */}
+              <img
+                src="/graduation-cap.svg"
+                alt="CodeQuiz"
+                className="w-full h-full object-contain filter drop-shadow-[0_0_6px_rgba(34,211,238,0.5)]"
+              />
             </div>
             <div>
               <span className="text-base font-black bg-gradient-to-r from-cyan-300 via-sky-200 to-indigo-300 bg-clip-text text-transparent tracking-tight">
