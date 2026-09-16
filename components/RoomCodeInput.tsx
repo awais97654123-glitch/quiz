@@ -30,24 +30,24 @@ export function RoomCodeInput({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
   return (
     <form onSubmit={handleSubmit} className="w-full">
       <div
-        className={`relative flex items-center rounded-full bg-[#08111e]/90 border transition-all duration-300 backdrop-blur-2xl ${
+        className={`relative flex items-center rounded-full bg-white/90 border transition-all duration-300 backdrop-blur-2xl ${
           error
-            ? 'border-rose-500/80 shadow-lg shadow-rose-500/10'
+            ? 'border-rose-400 shadow-lg shadow-rose-500/10'
             : isComplete
-            ? 'border-[#00e5ff] shadow-xl shadow-cyan-500/25 ring-2 ring-cyan-400/30'
-            : 'border-cyan-500/40 hover:border-cyan-400/70 shadow-xl shadow-cyan-950/30 focus-within:border-[#00e5ff] focus-within:ring-2 focus-within:ring-cyan-500/20'
+            ? 'border-cyan-500 shadow-xl shadow-cyan-500/20 ring-2 ring-cyan-400/25'
+            : 'border-slate-200 hover:border-cyan-400/70 shadow-lg shadow-slate-900/5 focus-within:border-cyan-500 focus-within:ring-2 focus-within:ring-cyan-500/15'
         } ${isLg ? 'p-1.5 sm:p-2 pl-3 sm:pl-4' : 'p-1 pl-2.5'}`}
       >
         {/* Left Symbol / Icon */}
         <div
           className={`flex items-center justify-center rounded-xl transition-colors ${
             isComplete
-              ? 'bg-cyan-500/20 text-[#00e5ff]'
-              : 'bg-slate-900/90 text-slate-400'
+              ? 'bg-cyan-100 text-cyan-600'
+              : 'bg-slate-100 text-slate-500'
           } ${isLg ? 'w-8 h-8 sm:w-10 sm:h-10' : 'w-7 h-7 sm:w-8 sm:h-8'} shrink-0`}
         >
           {isComplete ? (
-            <Sparkles className={isLg ? 'w-3.5 h-3.5 sm:w-4 sm:h-4 text-[#00e5ff] animate-pulse' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} />
+            <Sparkles className={isLg ? 'w-3.5 h-3.5 sm:w-4 sm:h-4 text-cyan-600 animate-pulse' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} />
           ) : (
             <Hash className={isLg ? 'w-3.5 h-3.5 sm:w-4 sm:h-4' : 'w-3 h-3 sm:w-3.5 sm:h-3.5'} />
           )}
@@ -63,7 +63,7 @@ export function RoomCodeInput({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
             value={code}
             onChange={handleChange}
             maxLength={8}
-            className={`w-full bg-transparent text-white font-mono placeholder:font-sans placeholder:text-slate-500 focus:outline-none transition-all ${
+            className={`w-full bg-transparent text-slate-900 font-mono placeholder:font-sans placeholder:text-slate-400 focus:outline-none transition-all ${
               code ? 'tracking-[0.12em] sm:tracking-[0.25em] font-extrabold' : 'tracking-normal font-normal'
             } ${isLg ? 'text-xs sm:text-base' : 'text-xs sm:text-sm'}`}
           />
@@ -71,7 +71,7 @@ export function RoomCodeInput({ size = 'lg' }: { size?: 'sm' | 'lg' }) {
 
         {/* Live Counter Badge */}
         {code.length > 0 && code.length < 8 && (
-          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-slate-400 mr-1 sm:mr-2 shrink-0">
+          <span className="text-[10px] sm:text-[11px] font-mono font-bold text-slate-500 mr-1 sm:mr-2 shrink-0">
             {code.length}/8
           </span>
         )}
