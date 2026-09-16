@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/app/actions/auth';
 
 const RESERVED_USERNAMES = new Set([
   'admin',
@@ -62,18 +62,7 @@ export async function GET(request: NextRequest) {
     }
 
     // Check if the current user already owns this username
-    let currentUser: { id: string } | null = null;
-    try {
-      const supabase = await createClient();
-      const userPromise = supabase.auth.getUser();
-      const timeoutPromise = new Promise<any>((resolve) =>
-        setTimeout(() => resolve({ data: { user: null } }), 1000)
-      );
-      const res = await Promise.race([userPromise, timeoutPromise]);
-      currentUser = res?.data?.user ?? null;
-    } catch {
-      currentUser = null;
-    }
+    const currentUser = await getAuthUser();
 
     const existingUser = await prisma.user.findFirst({
       where: {
@@ -84,7 +73,7 @@ export async function GET(request: NextRequest) {
     });
 
     if (existingUser) {
-      if (currentUser && existingUser.clerkUserId === currentUser.id) {
+      if (currentUser && existingUser.clerkUserId === currentUser.userId) {
         return NextResponse.json({
           available: true,
           message: 'This is your current username.',

@@ -20,11 +20,10 @@ import {
   ShieldCheck,
   X,
 } from 'lucide-react';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
-import { createClient } from '@/lib/supabase/client';
+import type { AppUser } from '@/lib/supabase/useUser';
 
 interface OnboardingModalProps {
-  user: SupabaseUser;
+  user: AppUser | any;
   onCompleted?: () => void;
 }
 
@@ -33,7 +32,6 @@ type CodingLevel = 'BEGINNER' | 'INTERMEDIATE' | 'EXPERT';
 
 export function OnboardingModal({ user, onCompleted }: OnboardingModalProps) {
   const router = useRouter();
-  const supabase = createClient();
 
   // Initial values from user metadata if any
   const defaultName =
@@ -149,7 +147,9 @@ export function OnboardingModal({ user, onCompleted }: OnboardingModalProps) {
   };
 
   const handleSignOut = async () => {
-    await supabase.auth.signOut();
+    const { logoutUser } = await import('@/app/actions/auth');
+    await logoutUser();
+    window.dispatchEvent(new Event('cq-auth-change'));
     router.push('/login');
     router.refresh();
   };

@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { prisma } from '@/lib/prisma';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/app/actions/auth';
+import { setSessionCookie } from '@/lib/auth/session';
 
 const VALID_INSTITUTION_TYPES = new Set(['SCHOOL', 'COLLEGE', 'UNIVERSITY']);
 const VALID_CODING_LEVELS = new Set(['BEGINNER', 'INTERMEDIATE', 'EXPERT']);
@@ -8,13 +9,9 @@ const USERNAME_REGEX = /^[a-zA-Z0-9_]{3,20}$/;
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: authError,
-    } = await supabase.auth.getUser();
+    const authUser = await getAuthUser();
 
-    if (authError || !user) {
+    if (!authUser || !authUser.userId) {
       return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
     }
 
@@ -50,7 +47,7 @@ export async function POST(request: NextRequest) {
     const existingUser = await prisma.user.findFirst({
       where: {
         username: { equals: normalizedUsername },
-        NOT: { clerkUserId: user.id },
+        NOT: { clerkUserId: authUser.userId },
       },
     });
 
@@ -87,56 +84,41 @@ export async function POST(request: NextRequest) {
       );
     }
 
-    // 1. Store in Prisma SQLite Database
-    await prisma.user.upsert({
-      where: { clerkUserId: user.id },
+    // Update in Prisma Database
+    const updatedUser = await prisma.user.upsert({
+      where: { clerkUserId: authUser.userId },
       update: {
         name: cleanName,
         username: normalizedUsername,
         institutionType: cleanInstType,
         institutionName: cleanInstName,
         codingLevel: cleanCodingLevel,
-        email: user.email || null,
+        email: authUser.email || null,
       },
       create: {
-        clerkUserId: user.id,
+        clerkUserId: authUser.userId,
         name: cleanName,
         username: normalizedUsername,
         institutionType: cleanInstType,
         institutionName: cleanInstName,
         codingLevel: cleanCodingLevel,
-        email: user.email || null,
-        avatar: user.user_metadata?.avatar_url || null,
+        email: authUser.email || null,
       },
     });
 
-    // 2. Store in Supabase Auth User Metadata
-    const { error: supabaseUpdateError } = await supabase.auth.updateUser({
-      data: {
-        name: cleanName,
-        full_name: cleanName,
-        username: normalizedUsername,
-        institution_type: cleanInstType,
-        institution_name: cleanInstName,
-        coding_level: cleanCodingLevel,
-        onboarding_completed: true,
-        onboarded_at: new Date().toISOString(),
-      },
+    // Refresh session cookie with username
+    await setSessionCookie({
+      id: updatedUser.clerkUserId,
+      email: updatedUser.email || authUser.email,
+      name: updatedUser.name || cleanName,
+      username: updatedUser.username,
     });
 
-    if (supabaseUpdateError) {
-      console.error('Supabase updateUser metadata error:', supabaseUpdateError);
-      return NextResponse.json(
-        { error: 'Saved to database, but failed to sync Supabase metadata: ' + supabaseUpdateError.message },
-        { status: 500 }
-      );
-    }
-
-    // 3. Trigger silent Welcome Email via Resend in the background
-    if (user.email) {
+    // Trigger silent Welcome Email via Resend in the background
+    if (authUser.email) {
       const { sendWelcomeEmail } = await import('@/lib/email');
       void sendWelcomeEmail({
-        to: user.email,
+        to: authUser.email,
         name: cleanName,
         username: normalizedUsername,
       }).catch((err) => console.error('[Resend Onboarding Welcome Error]', err));

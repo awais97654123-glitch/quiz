@@ -2,21 +2,21 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
+import { logoutUser } from '@/app/actions/auth';
 import { LogOut, AlertCircle, Loader2 } from 'lucide-react';
 
 export function ProfileSignOutButton() {
   const [showModal, setShowModal] = useState(false);
   const [loading, setLoading] = useState(false);
   const router = useRouter();
-  const supabase = createClient();
 
   const handleConfirm = async () => {
     setLoading(true);
     try {
-      await supabase.auth.signOut();
+      await logoutUser();
+      window.dispatchEvent(new Event('cq-auth-change'));
       setShowModal(false);
-      router.push('/');
+      router.push('/login');
       router.refresh();
     } catch (err) {
       console.error('Sign out error:', err);

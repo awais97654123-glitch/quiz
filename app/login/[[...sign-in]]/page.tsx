@@ -5,7 +5,7 @@ import type { Metadata } from 'next';
 
 export const metadata: Metadata = {
   title: 'Sign In | CodeQuiz',
-  description: 'Sign in to CodeQuiz with Google or your email to access quizzes, live multiplayer rooms, and leaderboards.',
+  description: 'Sign in to CodeQuiz with your email and password with real Gmail OTP verification.',
 };
 
 interface Props {
@@ -41,7 +41,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </p>
       </div>
 
-      {/* Supabase Authentication Card */}
+      {/* Authentication Card */}
       <div className="w-full max-w-md relative z-10">
         <SupabaseLoginForm redirectUrl={redirect_url} />
       </div>
@@ -58,7 +58,7 @@ export default async function LoginPage({ searchParams }: Props) {
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900/60 border border-slate-800/80">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Supabase Cloud Security</span>
+          <span>Real Gmail OTP Security</span>
         </div>
       </div>
     </div>

@@ -37,11 +37,11 @@ export default async function SignUpPage({ searchParams }: Props) {
           Create your <span className="bg-gradient-to-r from-cyan-400 via-sky-300 to-indigo-400 bg-clip-text text-transparent">CodeQuiz</span> Account
         </h1>
         <p className="text-xs sm:text-sm text-slate-400 max-w-md mx-auto leading-relaxed">
-          Sign up with Google or your email to track your assessment scores, challenge peers in live quiz rooms, and join the global rankings.
+          Sign up with your email and verify via 6-digit Gmail OTP to track your assessment scores, challenge peers in live quiz rooms, and join the global rankings.
         </p>
       </div>
 
-      {/* Supabase Authentication Card */}
+      {/* Authentication Card */}
       <div className="w-full max-w-md relative z-10">
         <SupabaseSignUpForm redirectUrl={redirect_url} />
       </div>
@@ -58,7 +58,7 @@ export default async function SignUpPage({ searchParams }: Props) {
         </div>
         <div className="flex items-center gap-1.5 px-3 py-1 rounded-lg bg-slate-900/60 border border-slate-800/80">
           <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-          <span>Supabase Cloud Security</span>
+          <span>Real Gmail OTP Security</span>
         </div>
       </div>
     </div>

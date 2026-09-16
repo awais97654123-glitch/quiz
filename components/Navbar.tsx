@@ -21,8 +21,7 @@ import {
   ChevronDown,
   ArrowLeft,
 } from 'lucide-react';
-import { createClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useUser } from '@/lib/supabase/useUser';
 
 const NAV_LINKS = [
   { href: '/', label: 'Home', icon: Home },
@@ -33,33 +32,13 @@ const NAV_LINKS = [
 
 export function Navbar() {
   const [mobileOpen, setMobileOpen] = useState(false);
-  const [user, setUser] = useState<SupabaseUser | null>(null);
+  const { user, isLoaded } = useUser();
   const [avatarError, setAvatarError] = useState(false);
-  const [loading, setLoading] = useState(true);
   const [profileDropdownOpen, setProfileDropdownOpen] = useState(false);
   const dropdownRef = useRef<HTMLDivElement>(null);
 
   const pathname = usePathname();
   const router = useRouter();
-  const supabase = createClient();
-
-  useEffect(() => {
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      setUser(user);
-      setLoading(false);
-    });
-
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      setUser(session?.user ?? null);
-      setLoading(false);
-    });
-
-    return () => {
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
 
   // Handle clicking outside to smoothly close dropdown
   useEffect(() => {
@@ -96,10 +75,12 @@ export function Navbar() {
   const confirmSignOut = async () => {
     setIsSigningOut(true);
     try {
-      await supabase.auth.signOut();
+      const { logoutUser } = await import('@/app/actions/auth');
+      await logoutUser();
+      window.dispatchEvent(new Event('cq-auth-change'));
       setShowSignOutModal(false);
       setProfileDropdownOpen(false);
-      router.push('/');
+      router.push('/login');
       router.refresh();
     } catch (err) {
       console.error('Sign out error:', err);
@@ -108,19 +89,21 @@ export function Navbar() {
     }
   };
 
-  const isAuthed = !loading && !!user;
+  const isAuthed = isLoaded && !!user;
   const displayName = isAuthed
-    ? (user?.user_metadata?.full_name ||
-       user?.user_metadata?.name ||
+    ? (user?.name ||
+       user?.user_metadata?.full_name ||
        user?.email?.split('@')[0] ||
        'Developer')
     : 'Guest Developer';
   const username = isAuthed
-    ? (user?.user_metadata?.username
+    ? (user?.username
+        ? `@${user.username}`
+        : user?.user_metadata?.username
         ? `@${user.user_metadata.username}`
         : user?.email || '@developer')
     : '@guest';
-  const avatarUrl = isAuthed ? user?.user_metadata?.avatar_url : undefined;
+  const avatarUrl = isAuthed ? (user?.avatar || user?.user_metadata?.avatar_url) : undefined;
 
   useEffect(() => {
     setAvatarError(false);

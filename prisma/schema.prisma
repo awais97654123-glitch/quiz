@@ -10,7 +10,8 @@ datasource db {
 model User {
   id              String   @id @default(cuid())
   clerkUserId     String   @unique
-  email           String?
+  email           String?  @unique
+  passwordHash    String?
   name            String?
   username        String?  @unique
   institutionType String?  // SCHOOL, COLLEGE, UNIVERSITY
@@ -179,5 +180,17 @@ model FriendChallenge {
   @@index([challengerId])
   @@index([opponentId])
   @@index([status])
+}
+
+model EmailVerificationOtp {
+  id        String   @id @default(cuid())
+  email     String
+  code      String   // 6-digit numeric OTP
+  type      String   // "SIGNUP" | "LOGIN" | "PASSWORD_RESET"
+  metadata  String?  // JSON string storing pending signup information (name, hashedPassword)
+  expiresAt DateTime
+  createdAt DateTime @default(now())
+
+  @@index([email])
 }
 

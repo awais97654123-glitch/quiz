@@ -2,17 +2,13 @@
 
 import { useState, useEffect } from 'react';
 import { usePathname } from 'next/navigation';
-import { createClient } from '@/lib/supabase/client';
-import type { User as SupabaseUser } from '@supabase/supabase-js';
+import { useUser } from '@/lib/supabase/useUser';
 import { OnboardingModal } from './OnboardingModal';
 
 export function OnboardingProvider() {
-  const [user, setUser] = useState<SupabaseUser | null>(null);
-  const [needsOnboarding, setNeedsOnboarding] = useState(false);
-  const [checked, setChecked] = useState(false);
+  const { user, isLoaded, refreshUser } = useUser();
   const [dismissed, setDismissed] = useState(false);
   const pathname = usePathname();
-  const supabase = createClient();
 
   useEffect(() => {
     try {
@@ -22,51 +18,21 @@ export function OnboardingProvider() {
     } catch {}
   }, []);
 
-  useEffect(() => {
-    let isMounted = true;
-
-    const inspectUser = (authUser: SupabaseUser | null) => {
-      if (!isMounted) return;
-      setUser(authUser);
-
-      if (authUser) {
-        // If user is authenticated, check if onboarding is completed
-        const isCompleted =
-          authUser.user_metadata?.onboarding_completed === true &&
-          !!authUser.user_metadata?.username &&
-          !!authUser.user_metadata?.institution_name;
-
-        setNeedsOnboarding(!isCompleted);
-      } else {
-        setNeedsOnboarding(false);
-      }
-      setChecked(true);
-    };
-
-    // Initial check
-    supabase.auth.getUser().then(({ data: { user } }) => {
-      inspectUser(user);
-    });
-
-    // Listen to real-time auth changes
-    const {
-      data: { subscription },
-    } = supabase.auth.onAuthStateChange((_event, session) => {
-      inspectUser(session?.user ?? null);
-    });
-
-    return () => {
-      isMounted = false;
-      subscription.unsubscribe();
-    };
-  }, [supabase]);
-
-  // Don't interrupt login / auth callback routes or if dismissed
-  if (!checked || !user || !needsOnboarding || dismissed) {
+  if (!isLoaded || !user || dismissed) {
     return null;
   }
 
-  if (pathname === '/login' || pathname.startsWith('/auth/')) {
+  // Check if user has completed onboarding
+  const isCompleted =
+    Boolean(user.username) &&
+    Boolean(user.institutionName || user.institutionType);
+
+  if (isCompleted) {
+    return null;
+  }
+
+  // Don't interrupt login / auth routes
+  if (pathname === '/login' || pathname.startsWith('/sign-up') || pathname.startsWith('/auth/')) {
     return null;
   }
 
@@ -74,8 +40,8 @@ export function OnboardingProvider() {
     <OnboardingModal
       user={user}
       onCompleted={() => {
-        setNeedsOnboarding(false);
         setDismissed(true);
+        refreshUser();
         try {
           sessionStorage.setItem('cq_onboarding_dismissed', 'true');
         } catch {}

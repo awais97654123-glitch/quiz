@@ -538,3 +538,65 @@ export async function broadcastPlatformUpdateToAllStudents(params: {
   }
 }
 
+export interface SendOtpEmailParams {
+  to: string;
+  code: string;
+  type: 'SIGNUP' | 'LOGIN' | 'PASSWORD_RESET';
+  name?: string;
+}
+
+/**
+ * Dispatches 6-digit OTP verification email via Resend API
+ */
+export async function sendOtpEmail({
+  to,
+  code,
+  type,
+  name,
+}: SendOtpEmailParams): Promise<SendEmailResult> {
+  const isSignUp = type === 'SIGNUP';
+  const actionTitle = isSignUp ? 'Verify Your Account' : 'Confirm Your Sign In';
+  const actionSubtitle = isSignUp
+    ? 'Welcome to CodeQuiz Arena! Use the verification code below to complete your registration.'
+    : 'A sign in attempt was made for your CodeQuiz Arena account.';
+
+  const htmlContent = `
+    <div style="text-align: center;">
+      <span class="badge">🔒 SECURITY VERIFICATION</span>
+      <h2 style="font-size: 24px; font-weight: 800; color: #ffffff; margin: 12px 0 6px;">
+        ${actionTitle}
+      </h2>
+      <p style="font-size: 14px; color: #94a3b8; margin-bottom: 24px; line-height: 1.6;">
+        ${name ? `Hello <strong style="color: #38bdf8;">${name}</strong>,<br>` : ''}
+        ${actionSubtitle}
+      </p>
+
+      <div class="card-box" style="text-align: center; border: 1px solid rgba(6, 182, 212, 0.3); background: rgba(6, 182, 212, 0.05); padding: 24px;">
+        <div style="font-size: 11px; text-transform: uppercase; color: #38bdf8; font-weight: 700; letter-spacing: 2px; margin-bottom: 12px;">
+          YOUR 6-DIGIT VERIFICATION CODE
+        </div>
+        <div style="font-family: 'Courier New', monospace; font-size: 38px; font-weight: 900; letter-spacing: 8px; color: #ffffff; text-shadow: 0 0 20px rgba(6, 182, 212, 0.6); padding: 10px 0;">
+          ${code}
+        </div>
+        <div style="font-size: 12px; color: #94a3b8; margin-top: 10px;">
+          ⏱️ This code will expire in <strong style="color: #f59e0b;">10 minutes</strong>.
+        </div>
+      </div>
+
+      <p style="font-size: 12px; color: #64748b; line-height: 1.5; margin-top: 24px;">
+        If you did not request this verification code, you can safely ignore this email. Never share this code with anyone.
+      </p>
+    </div>
+  `;
+
+  const subject = isSignUp
+    ? `🔐 ${code} is your CodeQuiz verification code`
+    : `🔑 ${code} is your CodeQuiz sign in code`;
+
+  return sendEmail({
+    to,
+    subject,
+    html: wrapEmailTemplate(htmlContent, `${code} is your CodeQuiz code`),
+  });
+}
+

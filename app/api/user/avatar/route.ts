@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { createClient } from '@/lib/supabase/server';
+import { getAuthUser } from '@/app/actions/auth';
 import { prisma } from '@/lib/prisma';
+import { setSessionCookie } from '@/lib/auth/session';
 import { writeFile, readdir, unlink } from 'fs/promises';
 import path from 'path';
 
@@ -16,14 +17,10 @@ const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5 MB
 
 export async function POST(request: NextRequest) {
   try {
-    const supabase = await createClient();
-    const {
-      data: { user },
-      error: userError,
-    } = await supabase.auth.getUser();
+    const authUser = await getAuthUser();
 
-    if (userError || !user) {
-      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 });
+    if (!authUser || !authUser.userId) {
+      return NextResponse.json({ error: 'Unauthorized. Please login.' }, { status: 401 });
     }
 
     const contentType = request.headers.get('content-type') || '';
@@ -59,7 +56,6 @@ export async function POST(request: NextRequest) {
           );
         }
 
-        // Determine extension
         let ext = 'png';
         if (file.type === 'image/jpeg') ext = 'jpg';
         else if (file.type === 'image/webp') ext = 'webp';
@@ -72,19 +68,17 @@ export async function POST(request: NextRequest) {
         const isServerless = Boolean(process.env.VERCEL || process.env.AWS_LAMBDA_FUNCTION_NAME);
 
         if (isServerless) {
-          // On Vercel / serverless runtime filesystem is read-only; store as Base64 Data URL
           finalAvatarUrl = `data:${file.type};base64,${buffer.toString('base64')}`;
         } else {
           try {
             const uploadsDir = path.join(process.cwd(), 'public', 'uploads', 'avatars');
-            const fileName = `avatar-${user.id}-${Date.now()}.${ext}`;
+            const fileName = `avatar-${authUser.userId}-${Date.now()}.${ext}`;
             const filePath = path.join(uploadsDir, fileName);
 
-            // Clean up previous uploads for this user
             try {
               const existingFiles = await readdir(uploadsDir);
               for (const f of existingFiles) {
-                if (f.startsWith(`avatar-${user.id}-`)) {
+                if (f.startsWith(`avatar-${authUser.userId}-`)) {
                   await unlink(path.join(uploadsDir, f)).catch(() => {});
                 }
               }
@@ -116,45 +110,28 @@ export async function POST(request: NextRequest) {
       }
     }
 
-    const updates: Record<string, any> = {};
-    if (newName !== undefined) {
-      updates.full_name = newName;
-      updates.name = newName;
-    }
-    if (finalAvatarUrl !== undefined) {
-      updates.avatar_url = finalAvatarUrl;
-    }
+    // Sync avatar & name to Prisma database
+    const updatedUser = await prisma.user.upsert({
+      where: { clerkUserId: authUser.userId },
+      update: {
+        ...(finalAvatarUrl !== undefined ? { avatar: finalAvatarUrl } : {}),
+        ...(newName !== undefined ? { name: newName } : {}),
+      },
+      create: {
+        clerkUserId: authUser.userId,
+        name: newName || authUser.name || 'Developer',
+        avatar: finalAvatarUrl || null,
+        email: authUser.email || null,
+      },
+    });
 
-    if (Object.keys(updates).length > 0) {
-      const { error: updateError } = await supabase.auth.updateUser({
-        data: updates,
+    if (newName) {
+      await setSessionCookie({
+        id: updatedUser.clerkUserId,
+        email: updatedUser.email || authUser.email,
+        name: updatedUser.name || newName,
+        username: updatedUser.username,
       });
-
-      if (updateError) {
-        return NextResponse.json(
-          { error: updateError.message },
-          { status: 500 }
-        );
-      }
-
-      // Sync avatar & name to Prisma database so Leaderboard and Duels show live avatar
-      try {
-        await prisma.user.upsert({
-          where: { clerkUserId: user.id },
-          update: {
-            ...(finalAvatarUrl !== undefined ? { avatar: finalAvatarUrl } : {}),
-            ...(newName !== undefined ? { name: newName } : {}),
-          },
-          create: {
-            clerkUserId: user.id,
-            name: newName || user.user_metadata?.name || 'Developer',
-            avatar: finalAvatarUrl || null,
-            email: user.email || null,
-          },
-        });
-      } catch (dbErr) {
-        console.error('Failed to sync avatar to database:', dbErr);
-      }
     }
 
     return NextResponse.json({
